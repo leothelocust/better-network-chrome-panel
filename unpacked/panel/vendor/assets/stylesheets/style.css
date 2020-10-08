@@ -1,0 +1,64 @@
+@font-face {
+    font-family: "icomoon";
+    src: url("../fonts/icomoon.eot");
+    src: url("../fonts/icomoon.eot") format("embedded-opentype"), url("../fonts/icomoon.ttf") format("truetype"),
+        url("../fonts/icomoon.woff") format("woff"), url("../fonts/icomoon.svg") format("svg");
+    font-weight: normal;
+    font-style: normal;
+    font-display: block;
+}
+
+[class^="icon-"],
+[class*=" icon-"] {
+    /* use !important to prevent issues with browser extensions that change fonts */
+    font-family: "icomoon" !important;
+    speak: never;
+    font-style: normal;
+    font-weight: normal;
+    font-variant: normal;
+    text-transform: none;
+    line-height: 1;
+
+    /* Better Font Rendering =========== */
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* NEW */
+
+.icon-floppy-disk:before {
+    content: "\e962";
+}
+.icon-search:before {
+    content: "\e986";
+}
+.icon-meter:before {
+    content: "\e9a6";
+}
+.icon-download3:before {
+    content: "\e9c7";
+}
+.icon-upload3:before {
+    content: "\e9c8";
+}
+.icon-link:before {
+    content: "\e9cb";
+}
+.icon-blocked:before {
+    content: "\ea0e";
+}
+.icon-filter:before {
+    content: "\ea5b";
+}
+.icon-embed:before {
+    content: "\ea7f";
+}
+.icon-embed2:before {
+    content: "\ea80";
+}
+.icon-terminal:before {
+    content: "\ea81";
+}
+.icon-sphere:before {
+    content: "\e9c9";
+}
