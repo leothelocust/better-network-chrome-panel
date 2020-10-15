@@ -1,4 +1,3 @@
-
 function Console() {}
 
 Console.Type = {
@@ -12,7 +11,7 @@ Console.Type = {
     GROUP_END: "groupEnd"
 };
 
-Console.addMessage = function(type, format, args) {
+Console.addMessage = function (type, format, args) {
     chrome.runtime.sendMessage({
         command: "sendToConsole",
         tabId: chrome.devtools.inspectedWindow.tabId,
@@ -21,7 +20,7 @@ Console.addMessage = function(type, format, args) {
 };
 
 // Generate Console output methods, i.e. Console.log(), Console.debug() etc.
-(function() {
+(function () {
     var console_types = Object.getOwnPropertyNames(Console.Type);
     for (var type = 0; type < console_types.length; ++type) {
         var method_name = Console.Type[console_types[type]];
@@ -29,9 +28,7 @@ Console.addMessage = function(type, format, args) {
     }
 })();
 
-
-BNPChrome.controller('PanelController', function PanelController($scope, $http, toolbar) {
-
+BNPChrome.controller("PanelController", function PanelController($scope, toolbar, parse) {
     $scope.uniqueid = 1000000;
     $scope.activeId = null;
     $scope.requests = {};
@@ -39,10 +36,10 @@ BNPChrome.controller('PanelController', function PanelController($scope, $http, 
     $scope.filteredRequests = [];
     $scope.showAll = true;
     $scope.limitNetworkRequests = true;
-    $scope.showOriginal = true;
-    $scope.currentDetailTab = "tab-code";
+    $scope.showOriginal = false;
+    $scope.currentDetailTab = "tab-response";
 
-    $scope.myCodeMirror = null;
+    $scope.myResponseCodeMirror = null;
 
     $scope.activeCookies = [];
     $scope.activeHeaders = [];
@@ -57,22 +54,16 @@ BNPChrome.controller('PanelController', function PanelController($scope, $http, 
 
     $scope.showIncomingRequests = true;
 
-    $scope.init = function(type) {
-        $('#tabs').tabs();
+    $scope.init = function (type) {
+        $("#tabs").tabs();
 
         $scope.initChrome();
 
         this.createToolbar();
     };
 
-    $scope.initChrome = function() {
-        key('⌘+k, ctrl+l', function() {
-            $scope.$apply(function() {
-                $scope.clear();
-            });
-        });
-
-        chrome.devtools.network.onRequestFinished.addListener(function(request) {
+    $scope.initChrome = function () {
+        chrome.devtools.network.onRequestFinished.addListener(function (request) {
             // do not show requests to chrome extension resources
             if (request.request.url.startsWith("chrome-extension://")) {
                 return;
@@ -81,99 +72,109 @@ BNPChrome.controller('PanelController', function PanelController($scope, $http, 
         });
     };
 
-    $scope.filterRequests = function() {
-        // console.debug('Search Filter: ', $scope.filter, $scope.filteredRequests.length, $scope.masterRequests.length);
-        // console.debug("Request", $scope.masterRequests[0]);
-        // console.debug('Requests', $scope.requests);
-        $scope.filteredRequests = $scope.masterRequests.filter(function(x) {
-            if (!$scope.filter) return true;
-            if (x && JSON.stringify(x).toLowerCase().includes($scope.filter.toLowerCase())) return true;
+    $scope.filterRequests = function () {
+        const searchString = $scope.filter.toLowerCase();
+        if (!searchString) $scope.filteredRequests = $scope.masterRequests;
+
+        $scope.filteredRequests = $scope.masterRequests.filter(function (x) {
+            if (x && x.searchIndex && x.searchIndex.includes(searchString)) return true;
         });
-    }
-
-    $scope.handleRequest = function(har_entry) {
-        const request_method = har_entry.request.method;
-        const request_url = har_entry.request.url;
-        const response_status = har_entry.response.status;
-
-        $scope.addRequest(har_entry, request_method, request_url, response_status, null);
     };
 
-    $scope.createToolbar = function() {
-        toolbar.createButton('search', 'Search Code', false, function() {
+    $scope.handleRequest = function (har_entry) {
+        $scope.addRequest(har_entry, har_entry.request.method, har_entry.request.url, har_entry.response.status, null);
+    };
+
+    $scope.createToolbar = function () {
+        toolbar.createButton("search", "Search Code", false, function () {
             // ga('send', 'event', 'button', 'click', 'Search Code');
-            $scope.$apply(function() {
-                if ($scope.myCodeMirror) {
-                    $scope.myCodeMirror.execCommand("find");
+            $scope.$apply(function () {
+                if ($scope.myResponseCodeMirror) {
+                    $scope.myResponseCodeMirror.execCommand("find");
                 }
             });
         });
-        toolbar.createToggleButton('embed', 'JSON Parsing', false, function() {
-            // ga('send', 'event', 'button', 'click', 'Toggle JSON Parsing');
-            $scope.$apply(function() {
-                $scope.showOriginal = !$scope.showOriginal;
-                $scope.displayCode();
-            });
-        }, false);
-        toolbar.createButton('download3', 'Download', false, function() {
+        toolbar.createToggleButton(
+            "embed",
+            "JSON Parsing",
+            false,
+            function () {
+                // ga('send', 'event', 'button', 'click', 'Toggle JSON Parsing');
+                $scope.$apply(function () {
+                    $scope.showOriginal = !$scope.showOriginal;
+                    $scope.selectDetailTab($scope.currentDetailTab);
+                    // $scope.displayCode();
+                });
+            },
+            true
+        );
+        toolbar.createButton("download3", "Download", false, function () {
             // ga('send', 'event', 'button', 'click', 'Download');
-            $scope.$apply(function() {
-                var blob = new Blob([JSON.stringify($scope.requests)], {type: "application/json;charset=utf-8"});
+            $scope.$apply(function () {
+                var blob = new Blob([JSON.stringify($scope.requests)], { type: "application/json;charset=utf-8" });
                 saveAs(blob, "BNPChromeExport.json");
             });
         });
-        toolbar.createButton('upload3', 'Import', true, function() {
+        toolbar.createButton("upload3", "Import", true, function () {
             // ga('send', 'event', 'button', 'click', 'Import');
-            $scope.$apply(function() {
-                $('#ImportInput').click();
+            $scope.$apply(function () {
+                $("#ImportInput").click();
             });
         });
-        toolbar.createToggleButton('meter', 'Limit network requests to 500', false, function() {
-            // ga('send', 'event', 'button', 'click', 'Toggle Limit Network Request');
-            $scope.$apply(function() {
-                $scope.limitNetworkRequests = !$scope.limitNetworkRequests;
-            });
-        }, true);
-        toolbar.createButton('blocked', 'Clear', false, function() {
+        toolbar.createToggleButton(
+            "meter",
+            "Limit network requests to 500",
+            false,
+            function () {
+                // ga('send', 'event', 'button', 'click', 'Toggle Limit Network Request');
+                $scope.$apply(function () {
+                    $scope.limitNetworkRequests = !$scope.limitNetworkRequests;
+                });
+            },
+            true
+        );
+        toolbar.createButton("blocked", "Clear", false, function () {
             // ga('send', 'event', 'button', 'click', 'Clear');
-            $scope.$apply(function() {
+            $scope.$apply(function () {
                 $scope.clear();
             });
         });
 
-        $('.toolbar').replaceWith(toolbar.render());
+        $(".toolbar").replaceWith(toolbar.render());
 
         //clears the input value so you can reload the same file
-        document.getElementById('ImportInput').addEventListener('click', function() {this.value=null;}, false);
-        document.getElementById('ImportInput').addEventListener('change', readFile, false);
-        function readFile (evt) {
+        document.getElementById("ImportInput").addEventListener(
+            "click",
+            function () {
+                this.value = null;
+            },
+            false
+        );
+        document.getElementById("ImportInput").addEventListener("change", readFile, false);
+        function readFile(evt) {
             const files = evt.target.files;
             const file = files[0];
             const reader = new FileReader();
-            reader.onload = function() {
+            reader.onload = function () {
                 $scope.importFile(this.result);
-            }
-            reader.readAsText(file)
+            };
+            reader.readAsText(file);
         }
     };
 
-    $scope.importFile = function(data) {
-        $scope.$apply(function() {
+    $scope.importFile = function (data) {
+        $scope.$apply(function () {
             const importHar = JSON.parse(data);
-            for (i in importHar)
-            {
+            for (i in importHar) {
                 $scope.handleRequest(importHar[i]);
             }
         });
-    }
+    };
 
-    $scope.addRequest = function(data, request_method, request_url, response_status) {
-
-        $scope.$apply(function() {
+    $scope.addRequest = function (data, request_method, request_url, response_status) {
+        $scope.$apply(function () {
             const requestId = $scope.uniqueid;
             $scope.uniqueid = $scope.uniqueid + 1;
-
-
 
             if (data.request != null) {
                 data["request_data"] = $scope.createKeypairs(data.request);
@@ -194,29 +195,41 @@ BNPChrome.controller('PanelController', function PanelController($scope, $http, 
                     data["response_cookies"] = $scope.createKeypairsDeep(data.response.cookies);
                 }
                 if (data.response.headers != null) {
-                   data["response_headers"] = $scope.createKeypairsDeep(data.response.headers);
+                    data["response_headers"] = $scope.createKeypairsDeep(data.response.headers);
                 }
             }
 
             data["request_method"] = request_method;
-            if (request_url.includes('apexremote')) {
+            if (request_url.includes("apexremote")) {
                 try {
-                    let text = (data && data.request && data.request.postData && data.request.postData.text) ? JSON.parse(data.request.postData.text) : '';
-                    data["request_apex_type"] = (text.data && typeof text.data[1] === 'string') ?  text.data[1] : JSON.stringify(text.data);
-                    data["request_apex_method"] = text.method || '';
-                } catch (e) {console.debug('Error', e)}
+                    let text =
+                        data && data.request && data.request.postData && data.request.postData.text
+                            ? JSON.parse(data.request.postData.text)
+                            : "";
+                    data["request_apex_type"] =
+                        text.data && typeof text.data[1] === "string" ? text.data[1] : JSON.stringify(text.data);
+                    data["request_apex_method"] = text.method || "";
+                } catch (e) {
+                    console.debug("Error", e);
+                }
             }
             data["request_url"] = request_url;
             data["response_status"] = response_status;
             data["id"] = requestId;
 
             $scope.requests[requestId] = data; // master
+            data.searchIndex = JSON.stringify(data).toLowerCase();
+            // console.debug('SearchIndex', data.searchIndex)
             $scope.masterRequests.push(data);
             $scope.filteredRequests.push(data);
 
             data.getContent(function (content, encoding) {
                 try {
-                    $scope.requests[requestId].response_data.response_body = JSON.stringify(JSON.parse(content), null, 4);
+                    $scope.requests[requestId].response_data.response_body = JSON.stringify(
+                        JSON.parse(content),
+                        null,
+                        4
+                    );
                 } catch (e) {}
             });
 
@@ -224,20 +237,20 @@ BNPChrome.controller('PanelController', function PanelController($scope, $http, 
         });
     };
 
-    $scope.cleanRequests = function() {
+    $scope.cleanRequests = function () {
         if ($scope.limitNetworkRequests === true) {
-            if ($scope.masterRequests.length >= 500 ) $scope.masterRequests.shift();
+            if ($scope.masterRequests.length >= 500) $scope.masterRequests.shift();
             const keys = Object.keys($scope.requests).reverse().slice(500);
-            keys.forEach(function(key) {
+            keys.forEach(function (key) {
                 if ($scope.requests[key]) {
                     delete $scope.requests[key];
                 }
             });
         }
         $scope.filterRequests();
-    }
+    };
 
-    $scope.clear = function() {
+    $scope.clear = function () {
         $scope.requests = {};
         $scope.activeId = null;
         $scope.masterRequests = [];
@@ -254,11 +267,9 @@ BNPChrome.controller('PanelController', function PanelController($scope, $http, 
         $scope.activeCode = null;
 
         $scope.showIncomingRequests = true;
-        document.getElementById("tab-code-codemirror").style.visibility = "hidden";
-
     };
 
-    $scope.setActive = function(requestId) {
+    $scope.setActive = function (requestId) {
         if (!$scope.requests[requestId]) {
             return;
         }
@@ -275,21 +286,21 @@ BNPChrome.controller('PanelController', function PanelController($scope, $http, 
         $scope.activeCode = $scope.requests[requestId].response_data.response_body;
     };
 
-    $scope.getClass = function(requestId) {
+    $scope.getClass = function (requestId) {
         if (requestId === $scope.activeId) {
-            return 'selected';
+            return "selected";
         } else {
-            return '';
+            return "";
         }
     };
 
-    $scope.createKeypairs = function(data) {
+    $scope.createKeypairs = function (data) {
         let keypairs = [];
         if (!(data instanceof Object)) {
             return keypairs;
         }
 
-        $.each(data, function(key, value) {
+        $.each(data, function (key, value) {
             if (!(value instanceof Object)) {
                 keypairs.push({
                     name: key,
@@ -301,14 +312,14 @@ BNPChrome.controller('PanelController', function PanelController($scope, $http, 
         return keypairs;
     };
 
-    $scope.createKeypairsDeep = function(data) {
+    $scope.createKeypairsDeep = function (data) {
         let keypairs = [];
 
         if (!(data instanceof Object)) {
             return keypairs;
         }
 
-        $.each(data, function(key, value) {
+        $.each(data, function (key, value) {
             keypairs.push({
                 name: value.name,
                 value: value.value
@@ -318,38 +329,56 @@ BNPChrome.controller('PanelController', function PanelController($scope, $http, 
         return keypairs;
     };
 
-
-    $scope.$watch('activeCode', function() {
-        $scope.displayCode();
+    $scope.$watch("activeCode", function (newVal, oldVal) {
+        $scope.displayCode("tab-response-codemirror", $scope.activeCode, "myResponseCodeMirror", 3);
+        $scope.displayCode("tab-request-codemirror", $scope.flatten($scope.activePostData), "myRequestCodeMirror", 6);
     });
 
-    $scope.selectDetailTab = function(tabId) {
+    $scope.selectDetailTab = function (tabId, external) {
         $scope.currentDetailTab = tabId;
-        if (tabId === "tab-code") {
-            $scope.displayCode();
+        if (external) {
+            $("#tabs a[href='#" + tabId + "']").trigger("click");
         }
-    }
+        if (tabId === "tab-response")
+            $scope.displayCode("tab-response-codemirror", $scope.activeCode, "myResponseCodeMirror", 3);
+        if (tabId === "tab-request")
+            $scope.displayCode(
+                "tab-request-codemirror",
+                $scope.flatten($scope.activePostData),
+                "myRequestCodeMirror",
+                6
+            );
+    };
 
-    $scope.displayCode = function() {
-        if ($scope.activeCode != null) {
-            document.getElementById("tab-code-codemirror").style.visibility = "visible";
+    $scope.flatten = function (input) {
+        if (input && typeof input === "object")
+            return input.map(function (x) {
+                var tmp = {};
+                tmp[x.name] = x.value;
+                return tmp;
+            });
+    };
 
-            let content = $scope.activeCode;
-            // if (!$scope.showOriginal) {
-            //     content = $scope.getPretty(content);
-            // } else {
-                content = JSON.stringify($scope.parse(content), null, 4);
-            // }
+    $scope.displayCode = function (elementId, input, scopeVar, depth) {
+        if (input != null) {
+            document.getElementById(elementId).style.visibility = "visible";
 
-            if ($scope.myCodeMirror) {
-                $scope.myCodeMirror.getDoc().setValue(content);
+            let content;
+            if ($scope.showOriginal) {
+                content = JSON.stringify(parse(input, 0, 1), null, 4);
+            } else {
+                content = JSON.stringify(parse(input, 0, depth), null, 4);
+            }
 
-                $scope.myCodeMirror.refresh();
+            if ($scope[scopeVar]) {
+                $scope[scopeVar].getDoc().setValue(content);
+
+                $scope[scopeVar].refresh();
                 return;
             }
 
-            document.getElementById("tab-code-codemirror").innerHTML = "";
-            const myCodeMirror = CodeMirror(document.getElementById("tab-code-codemirror"), {
+            document.getElementById(elementId).innerHTML = "";
+            const codeMirror = CodeMirror(document.getElementById(elementId), {
                 value: content,
                 mode: "application/json",
                 theme: "neat",
@@ -359,75 +388,24 @@ BNPChrome.controller('PanelController', function PanelController($scope, $http, 
                 foldGutter: true,
                 gutters: ["CodeMirror-linenumbers", "CodeMirror-foldgutter"]
             });
-            myCodeMirror.setOption("extraKeys", {
-                "Ctrl-F": function(cm) {
-                    cm.execCommand('findPersistent');
-                },
-                "Ctrl-G": function(cm) {
-                    cm.execCommand('findPersistentNext');
-                },
-                "Shift-Ctrl-G": function(cm) {
-                    cm.execCommand('findPersistentPrev');
-                }
-            });
-            $scope.myCodeMirror = myCodeMirror;
+            $scope[scopeVar] = codeMirror;
         }
-    }
+    };
 
-    $scope.getPretty = function(source) {
-        let code = $scope.parse(source);
+    $scope.getPretty = function (source) {
+        let code = JSON.stringify(parse(source, 0, 1), null, 4);
+        return code;
 
         const options = {
             source: code,
             mode: "beautify", //  beautify, diff, minify, parse
             lang: "auto",
-            inchar: " ", // indent character
+            inchar: " " // indent character
         };
         const pd = prettydiff(options); // returns and array: [beautified, report]
 
         const pretty = pd[0];
 
         return pretty;
-    }
-
-    $scope.parse = function(input) {
-        try {
-            // console.warn('Parse Type', typeof input);
-
-            if (typeof input === 'boolean') return input;
-            if (typeof input === 'number') return input;
-            if (!input) return input;
-            
-            if (typeof input === 'string') {
-                // if string, try to parse
-                // returns the original string if this fails
-                input = JSON.parse(input);
-                // console.debug('Parse String', input);
-                return $scope.parse(input);
-            }
-
-            if (Array.isArray(input)) {
-                for (let i = 0; i < input.length; i++) {
-                    // console.debug('Parse Inner Array', i, input[i]);
-                    input[i] = $scope.parse(input[i]);
-                }
-            }
-
-            if (typeof input === 'object') {
-                // console.debug('Parse Object', input);
-                Object.entries(input).forEach(function([key, value]) {
-                    // console.debug('Parse Inner Object', key, value);
-                    if (key === "result")
-                        input[key] = $scope.parse(value);
-                })
-            }
-        } catch (e) {
-            // console.info('Error parsing', e, typeof input, input)
-            // console.debug('Parse String Failed', input);
-            return input
-        }
-
-        // console.debug('Returning', input);
-        return input;
-    }
+    };
 });

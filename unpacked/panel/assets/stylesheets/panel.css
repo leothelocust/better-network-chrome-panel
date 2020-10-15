@@ -340,8 +340,8 @@ th, td {
 	padding: 0px;
 	position: relative;
 }
-#tab-request,
-#tab-response {
+#tab-request-stats,
+#tab-response-stats {
 	padding: 10px;
 }
 

@@ -116,13 +116,22 @@
                 <div class="tabbed-pane-header-contents">
                     <ul class="tabbed-pane-header-tabs">
                         <li class="tabbed-pane-header-tab">
-                            <a href="#tab-code" class="tabbed-pane-header-tab-title" ng-click="selectDetailTab('tab-code')">Preview</a>
+                            <a href="#tab-response" class="tabbed-pane-header-tab-title" ng-click="selectDetailTab('tab-response')">
+                                <span ng-show="showOriginal">Raw</span>
+                                <span ng-hide="showOriginal">Formatted</span>
+                                Response</a>
                         </li>
                         <li class="tabbed-pane-header-tab">
-                            <a href="#tab-request" class="tabbed-pane-header-tab-title" ng-click="selectDetailTab('tab-request')">Request</a>
+                            <a href="#tab-request" class="tabbed-pane-header-tab-title" ng-click="selectDetailTab('tab-request')">
+                                <span ng-show="showOriginal">Raw</span>
+                                <span ng-hide="showOriginal">Formatted</span>
+                                Request</a>
                         </li>
                         <li class="tabbed-pane-header-tab">
-                            <a href="#tab-response" class="tabbed-pane-header-tab-title" ng-click="selectDetailTab('tab-response')">Response</a>
+                            <a href="#tab-request-stats" class="tabbed-pane-header-tab-title" ng-click="selectDetailTab('tab-request-stats')">Request</a>
+                        </li>
+                        <li class="tabbed-pane-header-tab">
+                            <a href="#tab-response-stats" class="tabbed-pane-header-tab-title" ng-click="selectDetailTab('tab-response-stats')">Response</a>
                         </li>
                     </ul>
                 </div>
@@ -133,15 +142,15 @@
 
             <div class="tabbed-pane-content data-grid data-grid-details">
 
-                <div id="tab-request">
-                    <table id="postData" ng-show="activePostData.length">
+                <div id="tab-request-stats">
+                    <table id="postData" ng-show="activePostData.length" title="Click to open Request preview tab">
                         <thead>
                         <tr>
                             <th colspan="2">Request POST Data</th>
                         </tr>
                         </thead>
                         <tbody>
-                        <tr ng-repeat="param in activePostData">
+                        <tr ng-repeat="param in activePostData" ng-click="selectDetailTab('tab-request', true)">
                             <td class="key">{{param.name}}</td>
                             <td><pretty-print data="param.value"/></td>
                         </tr>
@@ -191,7 +200,7 @@
                     </table>
                 </div>
 
-                <div id="tab-response">
+                <div id="tab-response-stats">
                     <table id="response-data" ng-show="activeResponseData.length">
                         <thead>
                         <tr>
@@ -235,10 +244,25 @@
                 </div>
 
 
-                <div id="tab-code">
-                    <div id="tab-code-codemirror">
+                <div id="tab-response">
+                    <div id="tab-response-codemirror">
                     </div>
                 </div>
+
+                <div id="tab-request">
+                    <div id="tab-request-codemirror">
+                    </div>
+                </div>
+
+                <!-- <div id="tab-raw-res">
+                    <pre ng-show="activeCode">{{getPretty(activeCode)}}</pre>
+                    <pre ng-hide="activeCode">loading...</pre>
+                </div>
+
+                <div id="tab-raw-req">
+                    <pre ng-show="(activePostData | filter:{name:'text'}).length">{{activePostData | filter: {name:'text'} | json}}</pre>
+                    <pre ng-hide="(activePostData | filter:{name:'text'}).length">loading...</pre>
+                </div> -->
 
             </div>
         </div>
