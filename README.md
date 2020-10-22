@@ -14,7 +14,8 @@ And all of the above is done several times a day.
 
 ## THE SOLUTION
 
-![BNP for Chrome](/images/bnpscreenshot.png)
+[![BNP for Chrome](/images/bnpscreenshot.png)](https://chrome.google.com/webstore/detail/better-network-panel/kknnkgpbclaljhfcknhbebhppmkmoaml)
+
 
 I present to you a [Better Network Panel](https://chrome.google.com/webstore/detail/better-network-panel/kknnkgpbclaljhfcknhbebhppmkmoaml).  A Chrome extension that adds a new panel, and offers great features like:
 
