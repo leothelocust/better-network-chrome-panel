@@ -16,7 +16,7 @@ And all of the above is done several times a day.
 
 ![BNP for Chrome](/images/bnpscreenshot.png)
 
-I present to you a "Better Network Panel".  A Chrome extension that adds a new panel, and offers great features like:
+I present to you a [Better Network Panel](https://chrome.google.com/webstore/detail/better-network-panel/kknnkgpbclaljhfcknhbebhppmkmoaml).  A Chrome extension that adds a new panel, and offers great features like:
 
 * **Full Search** - Entire request is searchable (i.e. headers, postbody, etc...), not just URI
 * **JSON Parsing** - Even nested members that contain stringified JSON are parsed
