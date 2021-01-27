@@ -32,7 +32,7 @@ BNPChrome.controller("PanelController", function PanelController($scope, toolbar
 
     const LOCALSTORAGE = window.localStorage;
     const MAXBODYSIZE = 20000;
-    const HOST = "http://localhost:3000" // "https://leviolson.com"
+    const HOST = "https://leviolson.com" // "http://localhost:3000"
     const CHANGELOG = {
         "What's New": {
             "v1.0.0:": {
