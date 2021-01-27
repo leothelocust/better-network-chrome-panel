@@ -28,18 +28,39 @@ Console.addMessage = function (type, format, args) {
     }
 })();
 
-BNPChrome.controller("PanelController", function PanelController($scope, toolbar, parse) {
-    $scope.uniqueid = 1000000;
+BNPChrome.controller("PanelController", function PanelController($scope, toolbar, parse, $timeout) {
+
+    const LOCALSTORAGE = window.localStorage;
+    const MAXBODYSIZE = 20000;
+    const HOST = "http://localhost:3000" // "https://leviolson.com"
+    const CHANGELOG = {
+        "What's New": {
+            "v1.0.0:": {
+                "Improved Search": HOST + "/posts/bnp-changelog#improved-search",
+                "JSON Editor BUILT IN": HOST + "/posts/bnp-changelog#json-editor-built-in",
+                "Vertical Chrome Panel": HOST + "/posts/bnp-changelog#vertical-chrome-panel",
+                "Download JSON": HOST + "/posts/bnp-changelog#download-json"
+            }
+        }
+    }
+
+    $scope.search = "";
+    $scope.searchTerms = [];
+    $scope.oldSearchTerms = [];
+    $scope.andFilter = true;
+    $scope.uniqueId = 100000;
     $scope.activeId = null;
     $scope.requests = {};
     $scope.masterRequests = [];
     $scope.filteredRequests = [];
     $scope.showAll = true;
-    $scope.limitNetworkRequests = true;
+    $scope.limitNetworkRequests = false;
     $scope.showOriginal = false;
     $scope.currentDetailTab = "tab-response";
-
+    $scope.showIncomingRequests = true;
     $scope.myResponseCodeMirror = null;
+    $scope.filter = "";
+    $scope.editor = null;
 
     $scope.activeCookies = [];
     $scope.activeHeaders = [];
@@ -50,19 +71,60 @@ BNPChrome.controller("PanelController", function PanelController($scope, toolbar
     $scope.activeResponseHeaders = [];
     $scope.activeCode = null;
 
-    $scope.filter = "";
-
-    $scope.showIncomingRequests = true;
-
     $scope.init = function (type) {
         $("#tabs").tabs();
 
         $scope.initChrome();
 
-        this.createToolbar();
+        $scope.createToolbar();
+
+        const options = {
+            mode: 'view',
+            modes: ['code', 'view'],
+            onEditable: function (node) {
+              if (!node.path) {
+                // In modes code and text, node is empty: no path, field, or value
+                // returning false makes the text area read-only
+                return false;
+              }
+              return true
+            }
+        }
+        const response = document.getElementById('response-jsoneditor')
+        const request = document.getElementById('request-jsoneditor')
+        $scope.responseJsonEditor = new JSONEditor(response, options)
+        $scope.requestJsonEditor = new JSONEditor(request, options)
+
+        $timeout(() =>  {
+            $scope.responseJsonEditor.set(CHANGELOG);
+            $scope.responseJsonEditor.expandAll();
+        })
     };
 
     $scope.initChrome = function () {
+        try {
+            let oldSearchTerms = JSON.parse(LOCALSTORAGE.getItem('bnp-oldsearchterms'));
+            $scope.oldSearchTerms = oldSearchTerms || [];
+        } catch (e) {
+            $scope.oldSearchTerms = [];
+        }
+        
+        try {
+            let searchTerms = JSON.parse(LOCALSTORAGE.getItem('bnp-searchterms'));
+            $scope.searchTerms = searchTerms || [];
+        } catch (e) {
+            $scope.searchTerms = [];
+        }
+        
+        try {
+            let andFilter = JSON.parse(LOCALSTORAGE.getItem('bnp-andfilter'));
+            $scope.andFilter = andFilter || false;
+        } catch (e) {
+            $scope.andFilter = false;
+        }
+
+        console.debug('Retrieving', $scope.andFilter, $scope.searchTerms, $scope.oldSearchTerms);
+
         chrome.devtools.network.onRequestFinished.addListener(function (request) {
             // do not show requests to chrome extension resources
             if (request.request.url.startsWith("chrome-extension://")) {
@@ -70,15 +132,102 @@ BNPChrome.controller("PanelController", function PanelController($scope, toolbar
             }
             $scope.handleRequest(request);
         });
+
+        chrome.devtools.network.onNavigated.addListener(function (event) {
+            console.log("Event", event);
+            $scope.masterRequests.push({
+                id: $scope.uniqueId,
+                separator: true,
+                event: event
+            });
+            $scope.uniqueId++;
+            $scope.cleanRequests();
+        });
     };
 
     $scope.filterRequests = function () {
-        const searchString = $scope.filter.toLowerCase();
-        if (!searchString) $scope.filteredRequests = $scope.masterRequests;
+        if (!$scope.searchTerms || $scope.searchTerms.length === 0) {
+            $scope.filteredRequests = $scope.masterRequests;
+            return;
+        }
+        // console.log("Filtering for: ", $scope.searchTerms);
+
+        let negTerms = [];
+        let posTerms = [];
+        for (let term of $scope.searchTerms) {
+            term = term.toLowerCase();
+            if (term && term[0] === '-') negTerms.push(term.substring(1));
+            else posTerms.push(term);
+        }
 
         $scope.filteredRequests = $scope.masterRequests.filter(function (x) {
-            if (x && x.searchIndex && x.searchIndex.includes(searchString)) return true;
+            if (x.separator) return true;
+            for (let term of negTerms) {
+                // if neg
+                if (x && x.searchIndex && x.searchIndex.includes(term)) return false;
+            }
+
+            if ($scope.andFilter) {
+                // AND condition
+                for (let term of posTerms) {
+                    // if pos
+                    if (x && x.searchIndex && !x.searchIndex.includes(term)) {
+                        return false;
+                    }
+                }
+                return true;
+            } else {
+                // OR condition
+                for (let term of posTerms) {
+                    // if pos
+                    if (x && x.searchIndex && x.searchIndex.includes(term)) {
+                        return true;
+                    }
+                }
+                return false;
+            }
         });
+    };
+
+    $scope.toggleSearchType = function() {
+        $scope.andFilter = !$scope.andFilter;
+        _setLocalStorage();
+        $scope.filterRequests();
+    };
+
+    $scope.customSearch = function() {
+        if (!$scope.searchTerms.includes($scope.search)) {
+            $scope.searchTerms.push($scope.search);
+            $scope.search = "";
+            _setLocalStorage();
+            $scope.filterRequests()
+        }
+    };
+
+    _setLocalStorage = function() {
+        // do some sort of comparison to searchTerms and oldSearchTerms to make sure there is only one.
+        // although, now that I think about it... this comparison shouldn't be necessary... /shrug
+        LOCALSTORAGE.setItem('bnp-andfilter', JSON.stringify($scope.andFilter));
+        LOCALSTORAGE.setItem('bnp-searchterms', JSON.stringify($scope.searchTerms));
+        LOCALSTORAGE.setItem('bnp-oldsearchterms', JSON.stringify($scope.oldSearchTerms));
+        console.debug('Saving', $scope.andFilter, $scope.searchTerms, $scope.oldSearchTerms);
+    }
+
+    $scope.addSearchTerm = function(index) {
+        $scope.searchTerms.push($scope.oldSearchTerms.splice(index, 1)[0]);
+        _setLocalStorage();
+        $scope.filterRequests();
+    };
+
+    $scope.removeSearchTerm = function(index) {
+        $scope.oldSearchTerms.push($scope.searchTerms.splice(index, 1)[0]);
+        _setLocalStorage();
+        $scope.filterRequests();
+    };
+
+    $scope.deleteSearchTerm = function(index) {
+        $scope.oldSearchTerms.splice(index, 1);
+        _setLocalStorage();
     };
 
     $scope.handleRequest = function (har_entry) {
@@ -86,14 +235,6 @@ BNPChrome.controller("PanelController", function PanelController($scope, toolbar
     };
 
     $scope.createToolbar = function () {
-        toolbar.createButton("search", "Search Code", false, function () {
-            // ga('send', 'event', 'button', 'click', 'Search Code');
-            $scope.$apply(function () {
-                if ($scope.myResponseCodeMirror) {
-                    $scope.myResponseCodeMirror.execCommand("find");
-                }
-            });
-        });
         toolbar.createToggleButton(
             "embed",
             "JSON Parsing",
@@ -111,28 +252,21 @@ BNPChrome.controller("PanelController", function PanelController($scope, toolbar
         toolbar.createButton("download3", "Download", false, function () {
             // ga('send', 'event', 'button', 'click', 'Download');
             $scope.$apply(function () {
-                var blob = new Blob([JSON.stringify($scope.requests)], { type: "application/json;charset=utf-8" });
-                saveAs(blob, "BNPChromeExport.json");
+                const panel = $scope.currentDetailTab;
+                if (panel === "tab-response") {
+                    var blob = new Blob([JSON.parse(JSON.stringify($scope.activeCode, null, 4))], { type: "application/json;charset=utf-8" });
+                    saveAs(blob, "export_response.json");
+                } else {
+                    try {
+                        var blob = new Blob([JSON.stringify($scope.activePostData)], { type: "application/json;charset=utf-8" });
+                        saveAs(blob, "export_request.json");
+                    } catch (e) {
+                        console.log(e)
+                    }
+                    
+                }
             });
         });
-        toolbar.createButton("upload3", "Import", true, function () {
-            // ga('send', 'event', 'button', 'click', 'Import');
-            $scope.$apply(function () {
-                $("#ImportInput").click();
-            });
-        });
-        toolbar.createToggleButton(
-            "meter",
-            "Limit network requests to 500",
-            false,
-            function () {
-                // ga('send', 'event', 'button', 'click', 'Toggle Limit Network Request');
-                $scope.$apply(function () {
-                    $scope.limitNetworkRequests = !$scope.limitNetworkRequests;
-                });
-            },
-            true
-        );
         toolbar.createButton("blocked", "Clear", false, function () {
             // ga('send', 'event', 'button', 'click', 'Clear');
             $scope.$apply(function () {
@@ -141,40 +275,12 @@ BNPChrome.controller("PanelController", function PanelController($scope, toolbar
         });
 
         $(".toolbar").replaceWith(toolbar.render());
-
-        //clears the input value so you can reload the same file
-        document.getElementById("ImportInput").addEventListener(
-            "click",
-            function () {
-                this.value = null;
-            },
-            false
-        );
-        document.getElementById("ImportInput").addEventListener("change", readFile, false);
-        function readFile(evt) {
-            const files = evt.target.files;
-            const file = files[0];
-            const reader = new FileReader();
-            reader.onload = function () {
-                $scope.importFile(this.result);
-            };
-            reader.readAsText(file);
-        }
-    };
-
-    $scope.importFile = function (data) {
-        $scope.$apply(function () {
-            const importHar = JSON.parse(data);
-            for (i in importHar) {
-                $scope.handleRequest(importHar[i]);
-            }
-        });
     };
 
     $scope.addRequest = function (data, request_method, request_url, response_status) {
         $scope.$apply(function () {
-            const requestId = $scope.uniqueid;
-            $scope.uniqueid = $scope.uniqueid + 1;
+            const requestId = data.id || $scope.uniqueId;
+            $scope.uniqueId++
 
             if (data.request != null) {
                 data["request_data"] = $scope.createKeypairs(data.request);
@@ -202,35 +308,25 @@ BNPChrome.controller("PanelController", function PanelController($scope, toolbar
             data["request_method"] = request_method;
             if (request_url.includes("apexremote")) {
                 try {
-                    let text =
-                        data && data.request && data.request.postData && data.request.postData.text
-                            ? JSON.parse(data.request.postData.text)
-                            : "";
-                    data["request_apex_type"] =
-                        text.data && typeof text.data[1] === "string" ? text.data[1] : JSON.stringify(text.data);
+                    let text = data && data.request && data.request.postData && data.request.postData.text ? JSON.parse(data.request.postData.text) : "";
+                    data["request_apex_type"] = text.data && typeof text.data[1] === "string" ? text.data[1] : JSON.stringify(text.data);
                     data["request_apex_method"] = text.method || "";
                 } catch (e) {
                     console.debug("Error", e);
                 }
             }
-            data["request_url"] = request_url;
-            data["response_status"] = response_status;
-            data["id"] = requestId;
+            data.request_url     = request_url;
+            data.response_status = response_status;
+            data['id']           = requestId;
+            let ctObj            = data.response_headers.find(x => x.name == "Content-Type")
+            data.content_type    = ctObj && ctObj.value || null;
 
             $scope.requests[requestId] = data; // master
-            data.searchIndex = JSON.stringify(data).toLowerCase();
-            // console.debug('SearchIndex', data.searchIndex)
+            data.searchIndex = JSON.stringify(data.request).toLowerCase();
             $scope.masterRequests.push(data);
-            $scope.filteredRequests.push(data);
 
             data.getContent(function (content, encoding) {
-                try {
-                    $scope.requests[requestId].response_data.response_body = JSON.stringify(
-                        JSON.parse(content),
-                        null,
-                        4
-                    );
-                } catch (e) {}
+                $scope.requests[requestId].response_data.response_body = content;
             });
 
             $scope.cleanRequests();
@@ -286,12 +382,18 @@ BNPChrome.controller("PanelController", function PanelController($scope, toolbar
         $scope.activeCode = $scope.requests[requestId].response_data.response_body;
     };
 
-    $scope.getClass = function (requestId) {
+    $scope.getClass = function (requestId, separator) {
+        if (separator) return "separator"
         if (requestId === $scope.activeId) {
             return "selected";
         } else {
             return "";
         }
+    };
+    $scope.titleIfSeparator = function(separator) {
+        if (separator)
+            return "Page reloaded here"
+        return ""
     };
 
     $scope.createKeypairs = function (data) {
@@ -330,8 +432,12 @@ BNPChrome.controller("PanelController", function PanelController($scope, toolbar
     };
 
     $scope.$watch("activeCode", function (newVal, oldVal) {
-        $scope.displayCode("tab-response-codemirror", $scope.activeCode, "myResponseCodeMirror", 3);
-        $scope.displayCode("tab-request-codemirror", $scope.flatten($scope.activePostData), "myRequestCodeMirror", 6);
+        if (newVal === null) {
+            $scope.responseJsonEditor.set(null)
+            $scope.requestJsonEditor.set(null)
+        }
+        $scope.displayCode("responseJsonEditor", $scope.activeCode, 3);
+        $scope.displayCode("requestJsonEditor", $scope.activePostData, 6);
     });
 
     $scope.selectDetailTab = function (tabId, external) {
@@ -339,73 +445,55 @@ BNPChrome.controller("PanelController", function PanelController($scope, toolbar
         if (external) {
             $("#tabs a[href='#" + tabId + "']").trigger("click");
         }
-        if (tabId === "tab-response")
-            $scope.displayCode("tab-response-codemirror", $scope.activeCode, "myResponseCodeMirror", 3);
-        if (tabId === "tab-request")
-            $scope.displayCode(
-                "tab-request-codemirror",
-                $scope.flatten($scope.activePostData),
-                "myRequestCodeMirror",
-                6
-            );
-    };
-
-    $scope.flatten = function (input) {
-        if (input && typeof input === "object")
-            return input.map(function (x) {
-                var tmp = {};
-                tmp[x.name] = x.value;
-                return tmp;
-            });
-    };
-
-    $scope.displayCode = function (elementId, input, scopeVar, depth) {
-        if (input != null) {
-            document.getElementById(elementId).style.visibility = "visible";
-
-            let content;
-            if ($scope.showOriginal) {
-                content = JSON.stringify(parse(input, 0, 1), null, 4);
-            } else {
-                content = JSON.stringify(parse(input, 0, depth), null, 4);
-            }
-
-            if ($scope[scopeVar]) {
-                $scope[scopeVar].getDoc().setValue(content);
-
-                $scope[scopeVar].refresh();
-                return;
-            }
-
-            document.getElementById(elementId).innerHTML = "";
-            const codeMirror = CodeMirror(document.getElementById(elementId), {
-                value: content,
-                mode: "application/json",
-                theme: "neat",
-                lineNumbers: true,
-                lineWrapping: false,
-                readOnly: true,
-                foldGutter: true,
-                gutters: ["CodeMirror-linenumbers", "CodeMirror-foldgutter"]
-            });
-            $scope[scopeVar] = codeMirror;
+        if (tabId === "tab-response") {
+            $scope.displayCode("responseJsonEditor", $scope.activeCode, 3);
+        }
+        if (tabId === "tab-request") {
+            $scope.displayCode("requestJsonEditor", $scope.activePostData, 6);
         }
     };
 
-    $scope.getPretty = function (source) {
-        let code = JSON.stringify(parse(source, 0, 1), null, 4);
-        return code;
+    $scope.displayCode = function (elementId, input, depth) {
+        if (input) {
+            let content;
+            if ($scope.showOriginal) {
+                content = parse(input, 0, 1);
+            } else {
+                content = parse(input, 0, depth);
+            }
 
-        const options = {
-            source: code,
-            mode: "beautify", //  beautify, diff, minify, parse
-            lang: "auto",
-            inchar: " " // indent character
-        };
-        const pd = prettydiff(options); // returns and array: [beautified, report]
+            if (typeof input === 'object' || Array.isArray(input)) {
+                // JSON
+                $scope[elementId].setMode("view");
+                $scope[elementId].set(content);
+            } else {
+                // Something else
+                try {
+                    let json = JSON.parse(input)
+                    $scope[elementId].setMode("view");
+                    $scope[elementId].set(content);
+                } catch (e) {
+                    $scope[elementId].setMode("code");
+                    $scope[elementId].set(content);
+                }
+            }
 
-        const pretty = pd[0];
-
-        return pretty;
+            if (elementId === "responseJsonEditor") {
+                var bodySize = $scope.activeResponseData.find(x => x.name === "bodySize");
+                if (bodySize && bodySize.value < MAXBODYSIZE) { // an arbitrary number that I picked so there is HUGE lag
+                    if ($scope[elementId].getMode() === 'tree' || $scope[elementId].getMode() === 'view')
+                        $scope[elementId].expandAll();
+                }
+            } else if (elementId === "requestJsonEditor") {
+                var bodySize = $scope.activeRequest.find(x => x.name === "bodySize");
+                if (bodySize && bodySize.value < MAXBODYSIZE) {
+                    if ($scope[elementId].getMode() === 'tree' || $scope[elementId].getMode() === 'view')
+                        $scope[elementId].expandAll();
+                }
+            }
+        } else {
+            $scope[elementId].set(null);
+            $scope[elementId].expandAll();
+        }
     };
 });

@@ -63,12 +63,6 @@ var BNPChrome = angular
                 } else if (typeof data === "string" && (data[0] === "{" || data[0] === "[")) {
 					$el = $("<pre></pre>");
 					data = JSON.stringify(parse(data, 0), null, 4);
-                    // try {
-                    //     data = JSON.stringify(JSON.parse(data), null, 4);
-                    //     // $el.text()
-                    // } catch (e) {
-                    //     console.debug("Error parsing", data);
-                    // }
                 } else if (typeof data === "string") {
                     // i.e. a string but not a JSON stringified string
                     data = $("<div>").text(data).html();
@@ -110,6 +104,12 @@ var BNPChrome = angular
                         $target.data("resizableColumns").syncHandleWidths();
                         $target.data("resizableColumns").saveColumnWidths();
                     });
+                    // $(window).on("resize", function () {
+                    //     // console.log('resize event');
+                    //     // var $target = $($(element).data("resizable-columns-sync"));
+                    //     // $target.data("resizableColumns").refreshHeaders();
+                    //     // $(element).resizableColumns(options);
+                    // })
                 }
 
                 $(element).resizableColumns(options);
@@ -124,5 +124,27 @@ var BNPChrome = angular
 
                 $container.scrollTop($parent.height());
             }
+        };
+    }).directive('onSearch', function () {
+        return function (scope, element, attrs) {
+            element.bind("keypress", function (event) {
+                if((event.shiftKey && event.which === 220) || event.which === 13 || event.which === 44 || event.which === 124) {
+                    scope.$apply(function (){
+                        scope.$eval(attrs.onSearch);
+                    });
+    
+                    event.preventDefault();
+                }
+            });
+        };
+    }).directive('ngRightClick', function($parse) {
+        return function(scope, element, attrs) {
+            element.bind('contextmenu', function(event) {
+                scope.$apply(function() {
+                    scope.$eval(attrs.ngRightClick);
+                });
+                
+                event.preventDefault();
+            });
         };
     });

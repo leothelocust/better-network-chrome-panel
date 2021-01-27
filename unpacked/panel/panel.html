@@ -1,22 +1,15 @@
 <html ng-app="BNPChrome" ng-csp="">
+
 <head>
     <link rel="stylesheet" type="text/css" href="vendor/assets/stylesheets/jquery.resizableColumns.css">
     <link rel="stylesheet" type="text/css" href="vendor/assets/stylesheets/style.css">
 
-    <link rel="stylesheet" type="text/css" href="vendor/assets/codemirror/lib/codemirror.css">
-
-    <link rel="stylesheet" type="text/css" href="vendor/assets/codemirror/theme/3024-day.css">
-    <link rel="stylesheet" type="text/css" href="vendor/assets/codemirror/theme/base16-light.css">
-    <link rel="stylesheet" type="text/css" href="vendor/assets/codemirror/theme/elegant.css">
-    <link rel="stylesheet" type="text/css" href="vendor/assets/codemirror/theme/neat.css">
-    <link rel="stylesheet" type="text/css" href="vendor/assets/codemirror/theme/material.css">
-    <link rel="stylesheet" type="text/css" href="vendor/assets/codemirror/theme/material-ocean.css">
-    
-    <link rel="stylesheet" type="text/css" href="vendor/assets/codemirror/addon/dialog/dialog.css">
-    <link rel="stylesheet" type="text/css" href="vendor/assets/codemirror/addon/search/matchesonscrollbar.css">
-    <link rel="stylesheet" type="text/css" href="vendor/assets/codemirror/addon/fold/foldgutter.css">
-
     <link rel="stylesheet" type="text/css" href="assets/stylesheets/panel.css">
+
+    <link href="vendor/assets/stylesheets/jsoneditor.css" rel="stylesheet" type="text/css">
+
+    <script src="vendor/assets/javascripts/jsoneditor.js"></script>
+
     <script src="vendor/assets/javascripts/jquery-2.2.4.min.js"></script>
     <script src="vendor/assets/javascripts/jquery-ui-1.10.3.custom.min.js"></script>
     <script src="vendor/assets/javascripts/keymaster.min.js"></script>
@@ -25,248 +18,270 @@
     <script src="vendor/assets/javascripts/prettydiff.min.js"></script>
     <script src="vendor/assets/javascripts/rawinflate.js"></script>
 
-    <script src="vendor/assets/codemirror/lib/codemirror.js"></script>
-
-    <script src="vendor/assets/codemirror/mode/javascript/javascript.js"></script>
-
-    <script src="vendor/assets/codemirror/addon/dialog/dialog.js"></script>
-
-    <script src="vendor/assets/codemirror/addon/search/search.js"></script>
-    <script src="vendor/assets/codemirror/addon/search/jump-to-line.js"></script>
-    <script src="vendor/assets/codemirror/addon/search/searchcursor.js"></script>
-    <script src="vendor/assets/codemirror/addon/scroll/annotatescrollbar.js"></script>
-    <script src="vendor/assets/codemirror/addon/search/matchesonscrollbar.js"></script>
-
-    <script src="vendor/assets/codemirror/addon/fold/foldcode.js"></script>
-    <script src="vendor/assets/codemirror/addon/fold/foldgutter.js"></script>
-    <script src="vendor/assets/codemirror/addon/fold/brace-fold.js"></script>
-    <script src="vendor/assets/codemirror/addon/fold/indent-fold.js"></script>
-
     <script src="vendor/assets/javascripts/FileSaver.min.js"></script>
-    <script src="assets/javascripts/app.js"></script>
-    <script src="assets/javascripts/panel.js"></script>
-    <script src="assets/javascripts/toolbar.js"></script>
 </head>
-<body>
-<div class="split-view" ng-controller='PanelController' ng-init="init('chrome-extension')">
-    <div class="split-view-contents split-view-contents-requests">
-        <div class="data-grid data-grid-requests">
-            <table class="header" id="requests-header" resizable-columns data-resizable-columns-sync="#requests">
-                <thead>
-                <tr>
-                    <th class='request'>
-                        Path
-                        <input class="request-filter" ng-model="filter" placeholder="Filter" ng-change="filterRequests()" />
-                        <button ng-click="filter = 'apexremote'; filterRequests()">Apex</button>
-                        <button ng-click="filter = 'carts'; filterRequests()">CartsAPI</button>
-                    </th>
-                    <th class='apextype'>
-                        Apex Type
-                    </th>
-                    <th class='apexmethod'>
-                        Apex Method
-                    </th>
-                    <th class='method'>
-                        Method
-                    </th>
-                    <th class='status'>
-                        Status
-                    </th>
-                    <th class='time'>
-                        Time
-                    </th>
-                </tr>
-                </thead>
-            </table>
-            <div class="data-container">
-                <table id="requests" resizable-columns data-resizable-columns-sync="#requests-header">
-                    <tr class="sizing">
-                        <td class='request'></td>
-                        <td class='apextype'></td>
-                        <td class='apexmethod'></td>
-                        <td class='method'></td>
-                        <td class='status'></td>
-                        <td class='time'></td>
-                    </tr>
-                    <tr class="data clickable" ng-repeat="request in filteredRequests | orderBy:'id'" ng-click="setActive(request.id)" ng-class="getClass(request.id)">
-                        <!-- scroll-to-new -->
-                        <td class='request {{getTrafficStyle(request)}}' title="{{request.request_url}}">{{request.request_url}}</td>
-                        <td class='apextype' title="{{request.request_apex_type}}">{{request.request_apex_type}}</td>
-                        <td class='apexmethod' title="{{request.request_apex_method}}">{{request.request_apex_method}}</td>
-                        <td class='method' title="{{request.request_method}}">{{request.request_method}}</td>
-                        <td class='status' title="{{request.response_status}}">{{request.response_status}}</td>
-                        <td class='time' title="{{request.time}}">{{ request.time / 1000 | number : 2 }} s</td>
-                    </tr>
-                    <tr class="filler">
-                        <td class='request'></td>
-                        <td class='apextype'></td>
-                        <td class='apexmethod'></td>
-                        <td class='method'></td>
-                        <td class='status'></td>
-                        <td class='time'></td>
-                    </tr>
+
+<body ng-controller='PanelController' ng-init="init('chrome-extension')" ng-cloak>
+
+    <div class="split-view">
+        <div class="split-view-contents split-view-contents-requests top-border">
+            <div class="wrap">
+                <input ng-model="search" type="text" placeholder='Add search term then ENTER' title='prefix with "-" to remove from search results' on-search="customSearch()" />
+        
+                <span class="label">Filtering for:</span>
+                <span ng-repeat="term in searchTerms">
+                    <span title="Click to remove"
+                          class="searchterm"
+                          ng-class="{ neg: term[0] == '-'}"
+                          ng-click="removeSearchTerm($index)">{{term}}</span>
+                    <span class="operator" ng-hide="$last" ng-click="toggleSearchType()">{{ andFilter && 'and' || 'or' }}</span>
+                </span>
+                <br class="mobile" />
+                <div id="recent-searches">
+                    <span class="recent">Recent searches:</span>
+                    <span ng-repeat="term in oldSearchTerms"
+                          title="Click to Search, right click to permanently remove from history"
+                          class="recents"
+                          ng-class="{ neg: term[0] == '-'}"
+                          ng-click="addSearchTerm($index)"
+                          ng-right-click="deleteSearchTerm($index)">{{term}}</span>
+                </div>
+            </div>
+            <div class="data-grid data-grid-requests">
+                <table class="header styled" id="requests-header" resizable-columns data-resizable-columns-sync="#requests">
+                    <thead>
+                        <tr>
+                            <th class='request'>
+                                Path
+                            </th>
+                            <th class='apextype'>
+                                Apex Type
+                            </th>
+                            <th class='apexmethod'>
+                                Apex Method
+                            </th>
+                            <th class='method'>
+                                Method
+                            </th>
+                            <th class='status'>
+                                Status
+                            </th>
+                            <th class='time'>
+                                Time
+                            </th>
+                            <th class='datetime'>
+                                Started
+                            </th>
+                        </tr>
+                    </thead>
                 </table>
+                <div class="data-container">
+                    <table id="requests" class="styled" resizable-columns data-resizable-columns-sync="#requests-header">
+                        <tr class="sizing">
+                            <td class='request'></td>
+                            <td class='apextype'></td>
+                            <td class='apexmethod'></td>
+                            <td class='method'></td>
+                            <td class='status'></td>
+                            <td class='time'></td>
+                            <td class='datetime'></td>
+                        </tr>
+                        <tr class="data clickable" ng-repeat="request in filteredRequests | orderBy:'id'"
+                            ng-click="!request.separator && setActive(request.id)" ng-class="getClass(request.id, request.separator)">
+                            <!-- scroll-to-new -->
+                            <td class='request' title="{{request.request_url || titleIfSeparator(request.separator) }}">{{request.request_url}}</td>
+                            <td class='apextype' title="{{request.request_apex_type || titleIfSeparator(request.separator) }}">{{request.request_apex_type}}</td>
+                            <td class='apexmethod' title="{{request.request_apex_method || titleIfSeparator(request.separator) }}">{{request.request_apex_method}}</td>
+                            <td class='method' title="{{request.request_method || titleIfSeparator(request.separator) }}">{{request.request_method}}</td>
+                            <td class='status' title="{{request.response_status || titleIfSeparator(request.separator) }}">{{request.response_status}}</td>
+                            <td class='time' title="{{request.time || titleIfSeparator(request.separator) }}">{{ request.time / 1000 | number : 2 }} s</td>
+                            <td class='datetime' title="{{request.startedDateTime || titleIfSeparator(request.separator) }}">{{ request.startedDateTime | date: "mediumTime" }}</td>
+                        </tr>
+                        <tr class="filler">
+                            <td class='request'></td>
+                            <td class='apextype'></td>
+                            <td class='apexmethod'></td>
+                            <td class='method'></td>
+                            <td class='status'></td>
+                            <td class='time'></td>
+                            <td class='datetime'></td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="split-view-contents split-view-contents-details top-border">
+            <div id="tabs" class="tabbed-pane">
+                <div class="tabbed-pane-header">
+                    <div class="tabbed-pane-header-contents">
+                        <ul class="tabbed-pane-header-tabs">
+                            <li class="tabbed-pane-header-tab">
+                                <a href="#tab-response" class="tabbed-pane-header-tab-title"
+                                    ng-click="selectDetailTab('tab-response')">
+                                    <span ng-show="showOriginal">Raw</span>
+                                    <span ng-hide="showOriginal">Formatted</span>
+                                    Response</a>
+                            </li>
+                            <li class="tabbed-pane-header-tab">
+                                <a href="#tab-request" class="tabbed-pane-header-tab-title"
+                                    ng-click="selectDetailTab('tab-request')">
+                                    <span ng-show="showOriginal">Raw</span>
+                                    <span ng-hide="showOriginal">Formatted</span>
+                                    Request</a>
+                            </li>
+                            <li class="tabbed-pane-header-tab">
+                                <a href="#tab-request-stats" class="tabbed-pane-header-tab-title"
+                                    ng-click="selectDetailTab('tab-request-stats')">Request</a>
+                            </li>
+                            <li class="tabbed-pane-header-tab">
+                                <a href="#tab-response-stats" class="tabbed-pane-header-tab-title"
+                                    ng-click="selectDetailTab('tab-response-stats')">Response</a>
+                            </li>
+                        </ul>
+                    </div>
+
+                    <div class="toolbar"></div>
+
+                </div>
+
+                <div class="tabbed-pane-content data-grid data-grid-details">
+
+                    <div id="tab-request-stats">
+                        <table id="postData" class="styled" ng-show="activePostData.length" title="Click to open Request preview tab">
+                            <thead>
+                                <tr>
+                                    <th colspan="2">Request POST Data</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr ng-repeat="param in activePostData" ng-click="selectDetailTab('tab-request', true)">
+                                    <td class="key">{{param.name}}</td>
+                                    <td>
+                                        <pretty-print data="param.value" />
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <table id="request-data" class="styled" ng-show="activeRequest.length">
+                            <thead>
+                                <tr>
+                                    <th colspan="2">Request Data</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr ng-repeat="param in activeRequest">
+                                    <td class="key">{{param.name}}</td>
+                                    <td class="value">
+                                        <pretty-print data="param.value" />
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <table id="headers" class="styled" ng-show="activeHeaders.length">
+                            <thead>
+                                <tr>
+                                    <th colspan="2">Request Headers</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr ng-repeat="param in activeHeaders">
+                                    <td class="key">{{param.name}}</td>
+                                    <td class="value">
+                                        <pretty-print data="param.value" />
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <table id="request-cookies" class="styled" ng-show="activeResponseCookies.length">
+                            <thead>
+                                <tr>
+                                    <th colspan="2">Request Cookies</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr ng-repeat="param in activeCookies">
+                                    <td class="key">{{param.name}}</td>
+                                    <td>
+                                        <pretty-print data="param.value" />
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div id="tab-response-stats">
+                        <table id="response-data" class="styled" ng-show="activeResponseData.length">
+                            <thead>
+                                <tr>
+                                    <th colspan="2">Response Data</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr ng-repeat="param in activeResponseData">
+                                    <td class="key">{{param.name}}</td>
+                                    <td class="value">
+                                        <pretty-print data="param.value" />
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <table id="response-headers" class="styled" ng-show="activeResponseHeaders.length">
+                            <thead>
+                                <tr>
+                                    <th colspan="2">Response Headers</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr ng-repeat="param in activeResponseHeaders">
+                                    <td class="key">{{param.name}}</td>
+                                    <td class="value">
+                                        <pretty-print data="param.value" />
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <table id="response-cookies" class="styled" ng-show="activeResponseCookies.length">
+                            <thead>
+                                <tr>
+                                    <th colspan="2">Response Cookies</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr ng-repeat="param in activeResponseCookies">
+                                    <td class="key">{{param.name}}</td>
+                                    <td>
+                                        <pretty-print data="param.value" />
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+
+                    <div id="tab-response">
+                        <div id="response-jsoneditor"></div>
+                        <!-- <div id="tab-response-codemirror"></div> -->
+                    </div>
+
+                    <div id="tab-request">
+                        <div id="request-jsoneditor"></div>
+                        <!-- <div id="tab-request-codemirror"></div> -->
+                    </div>
+
+
+                    <script src="assets/javascripts/app.js"></script>
+                    <script src="assets/javascripts/panel.js"></script>
+                    <script src="assets/javascripts/toolbar.js"></script>
+
+                </div>
             </div>
         </div>
     </div>
-
-    <div class="split-view-contents split-view-contents-details">
-        <div id="tabs" class="tabbed-pane">
-            <div class="tabbed-pane-header">
-                <div class="tabbed-pane-header-contents">
-                    <ul class="tabbed-pane-header-tabs">
-                        <li class="tabbed-pane-header-tab">
-                            <a href="#tab-response" class="tabbed-pane-header-tab-title" ng-click="selectDetailTab('tab-response')">
-                                <span ng-show="showOriginal">Raw</span>
-                                <span ng-hide="showOriginal">Formatted</span>
-                                Response</a>
-                        </li>
-                        <li class="tabbed-pane-header-tab">
-                            <a href="#tab-request" class="tabbed-pane-header-tab-title" ng-click="selectDetailTab('tab-request')">
-                                <span ng-show="showOriginal">Raw</span>
-                                <span ng-hide="showOriginal">Formatted</span>
-                                Request</a>
-                        </li>
-                        <li class="tabbed-pane-header-tab">
-                            <a href="#tab-request-stats" class="tabbed-pane-header-tab-title" ng-click="selectDetailTab('tab-request-stats')">Request</a>
-                        </li>
-                        <li class="tabbed-pane-header-tab">
-                            <a href="#tab-response-stats" class="tabbed-pane-header-tab-title" ng-click="selectDetailTab('tab-response-stats')">Response</a>
-                        </li>
-                    </ul>
-                </div>
-
-                <div class="toolbar"></div>
-
-            </div>
-
-            <div class="tabbed-pane-content data-grid data-grid-details">
-
-                <div id="tab-request-stats">
-                    <table id="postData" ng-show="activePostData.length" title="Click to open Request preview tab">
-                        <thead>
-                        <tr>
-                            <th colspan="2">Request POST Data</th>
-                        </tr>
-                        </thead>
-                        <tbody>
-                        <tr ng-repeat="param in activePostData" ng-click="selectDetailTab('tab-request', true)">
-                            <td class="key">{{param.name}}</td>
-                            <td><pretty-print data="param.value"/></td>
-                        </tr>
-                        </tbody>
-                    </table>
-
-                    <table id="request-data" ng-show="activeRequest.length">
-                        <thead>
-                        <tr>
-                            <th colspan="2">Request Data</th>
-                        </tr>
-                        </thead>
-                        <tbody>
-                        <tr ng-repeat="param in activeRequest">
-                            <td class="key">{{param.name}}</td>
-                            <td class="value"><pretty-print data="param.value"/></td>
-                        </tr>
-                        </tbody>
-                    </table>
-
-                    <table id="headers" ng-show="activeHeaders.length">
-                        <thead>
-                        <tr>
-                            <th colspan="2">Request Headers</th>
-                        </tr>
-                        </thead>
-                        <tbody>
-                        <tr ng-repeat="param in activeHeaders">
-                            <td class="key">{{param.name}}</td>
-                            <td class="value"><pretty-print data="param.value"/></td>
-                        </tr>
-                        </tbody>
-                    </table>
-
-                    <table id="request-cookies" ng-show="activeResponseCookies.length">
-                        <thead>
-                        <tr>
-                            <th colspan="2">Request Cookies</th>
-                        </tr>
-                        </thead>
-                        <tbody>
-                        <tr ng-repeat="param in activeCookies">
-                            <td class="key">{{param.name}}</td>
-                            <td><pretty-print data="param.value"/></td>
-                        </tr>
-                        </tbody>
-                    </table>
-                </div>
-
-                <div id="tab-response-stats">
-                    <table id="response-data" ng-show="activeResponseData.length">
-                        <thead>
-                        <tr>
-                            <th colspan="2">Response Data</th>
-                        </tr>
-                        </thead>
-                        <tbody>
-                        <tr ng-repeat="param in activeResponseData">
-                            <td class="key">{{param.name}}</td>
-                            <td class="value"><pretty-print data="param.value"/></td>
-                        </tr>
-                        </tbody>
-                    </table>
-
-                    <table id="response-headers" ng-show="activeResponseHeaders.length">
-                        <thead>
-                        <tr>
-                            <th colspan="2">Response Headers</th>
-                        </tr>
-                        </thead>
-                        <tbody>
-                        <tr ng-repeat="param in activeResponseHeaders">
-                            <td class="key">{{param.name}}</td>
-                            <td class="value"><pretty-print data="param.value"/></td>
-                        </tr>
-                        </tbody>
-                    </table>
-                    <table id="response-cookies" ng-show="activeResponseCookies.length">
-                        <thead>
-                        <tr>
-                            <th colspan="2">Response Cookies</th>
-                        </tr>
-                        </thead>
-                        <tbody>
-                        <tr ng-repeat="param in activeResponseCookies">
-                            <td class="key">{{param.name}}</td>
-                            <td><pretty-print data="param.value"/></td>
-                        </tr>
-                        </tbody>
-                    </table>
-                </div>
-
-
-                <div id="tab-response">
-                    <div id="tab-response-codemirror">
-                    </div>
-                </div>
-
-                <div id="tab-request">
-                    <div id="tab-request-codemirror">
-                    </div>
-                </div>
-
-                <!-- <div id="tab-raw-res">
-                    <pre ng-show="activeCode">{{getPretty(activeCode)}}</pre>
-                    <pre ng-hide="activeCode">loading...</pre>
-                </div>
-
-                <div id="tab-raw-req">
-                    <pre ng-show="(activePostData | filter:{name:'text'}).length">{{activePostData | filter: {name:'text'} | json}}</pre>
-                    <pre ng-hide="(activePostData | filter:{name:'text'}).length">loading...</pre>
-                </div> -->
-
-            </div>
-        </div>
-    </div>
-</div>
 </body>
+
 </html>
