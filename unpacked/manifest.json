@@ -1,6 +1,6 @@
 {
   "name": "Better Network Panel",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "minimum_chrome_version": "44.0",
   "description": "Extends the Developer Tools, adding a new Network Panel in the Developer Tools window with better searching and response previews.",
   "devtools_page": "devtools.html",

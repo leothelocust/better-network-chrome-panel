@@ -23,22 +23,22 @@
 
 <body ng-controller='PanelController' ng-init="init('chrome-extension')" ng-cloak>
 
-    <div class="split-view">
-        <div class="split-view-contents split-view-contents-requests top-border">
-            <div class="wrap">
+    <section class="wrapper">
+        <section class="request">
+            <div class="search">
                 <input ng-model="search" type="text" placeholder='Add search term then ENTER' title='prefix with "-" to remove from search results' on-search="customSearch()" />
-        
-                <span class="label">Filtering for:</span>
-                <span ng-repeat="term in searchTerms">
-                    <span title="Click to remove"
-                          class="searchterm"
-                          ng-class="{ neg: term[0] == '-'}"
-                          ng-click="removeSearchTerm($index)">{{term}}</span>
-                    <span class="operator" ng-hide="$last" ng-click="toggleSearchType()">{{ andFilter && 'and' || 'or' }}</span>
-                </span>
-                <br class="mobile" />
-                <div id="recent-searches">
-                    <span class="recent">Recent searches:</span>
+                <div class="filtering">
+                    <span class="label">Filtering for:</span>
+                    <span ng-repeat="term in searchTerms">
+                        <span title="Click to remove"
+                            class="searchterm"
+                            ng-class="{ neg: term[0] == '-'}"
+                            ng-click="removeSearchTerm($index)">{{term}}</span>
+                        <span class="operator" ng-hide="$last" ng-click="toggleSearchType()">{{ andFilter && 'and' || 'or' }}</span>
+                    </span>
+                </div>
+                <div class="recent-searches">
+                    <span class="label">Recent searches:</span>
                     <span ng-repeat="term in oldSearchTerms"
                           title="Click to Search, right click to permanently remove from history"
                           class="recents"
@@ -47,7 +47,7 @@
                           ng-right-click="deleteSearchTerm($index)">{{term}}</span>
                 </div>
             </div>
-            <div class="data-grid data-grid-requests">
+            <div class="requests">
                 <table class="header styled" id="requests-header" resizable-columns data-resizable-columns-sync="#requests">
                     <thead>
                         <tr>
@@ -86,7 +86,7 @@
                             <td class='time'></td>
                             <td class='datetime'></td>
                         </tr>
-                        <tr class="data clickable" ng-repeat="request in filteredRequests | orderBy:'id'"
+                        <tr class="data clickable" ng-repeat="request in filteredRequests | orderBy:'id'" scroll-to-new
                             ng-click="!request.separator && setActive(request.id)" ng-class="getClass(request.id, request.separator)">
                             <!-- scroll-to-new -->
                             <td class='request' title="{{request.request_url || titleIfSeparator(request.separator) }}">{{request.request_url}}</td>
@@ -97,21 +97,12 @@
                             <td class='time' title="{{request.time || titleIfSeparator(request.separator) }}">{{ request.time / 1000 | number : 2 }} s</td>
                             <td class='datetime' title="{{request.startedDateTime || titleIfSeparator(request.separator) }}">{{ request.startedDateTime | date: "mediumTime" }}</td>
                         </tr>
-                        <tr class="filler">
-                            <td class='request'></td>
-                            <td class='apextype'></td>
-                            <td class='apexmethod'></td>
-                            <td class='method'></td>
-                            <td class='status'></td>
-                            <td class='time'></td>
-                            <td class='datetime'></td>
-                        </tr>
                     </table>
                 </div>
             </div>
-        </div>
+        </section>
 
-        <div class="split-view-contents split-view-contents-details top-border">
+        <section class="response">
             <div id="tabs" class="tabbed-pane">
                 <div class="tabbed-pane-header">
                     <div class="tabbed-pane-header-contents">
@@ -137,6 +128,10 @@
                             <li class="tabbed-pane-header-tab">
                                 <a href="#tab-response-stats" class="tabbed-pane-header-tab-title"
                                     ng-click="selectDetailTab('tab-response-stats')">Response</a>
+                            </li>
+                            <li class="tabbed-pane-header-tab">
+                                <a href="#tab-settings" class="tabbed-pane-header-tab-title"
+                                    ng-click="selectDetailTab('tab-settings')">Panel Settings</a>
                             </li>
                         </ul>
                     </div>
@@ -262,15 +257,33 @@
                         </table>
                     </div>
 
-
                     <div id="tab-response">
                         <div id="response-jsoneditor"></div>
-                        <!-- <div id="tab-response-codemirror"></div> -->
                     </div>
 
                     <div id="tab-request">
                         <div id="request-jsoneditor"></div>
-                        <!-- <div id="tab-request-codemirror"></div> -->
+                    </div>
+
+                    <div id="tab-settings">
+                        <h3>Settings</h3>
+                        <div class="form-group">
+                            <label for="scroll-to-new">Auto Scroll Network Log</label>
+                            <input type="checkbox" name="scroll-to-new" id="scroll-to-new" ng-model="showIncomingRequests">
+                        </div>
+                        <h3>Coming Soon</h3>
+                        <div class="form-group" title="Not implemented yet">
+                            <label for="clear-on-refresh">Clear Network Log on Page Refresh</label>
+                            <input disabled="disabled" type="checkbox" name="clear-on-refresh" id="clear-on-refresh" ng-model="clearOnRefresh">
+                        </div>
+                        <div class="form-group" title="Not implemented yet">
+                            <label for="auto-json-parse-depth-response">Auto JSON Parse Depth (Response)</label>
+                            <input disabled="disabled" type="number" name="auto-json-parse-depth-response" id="auto-json-parse-depth-response" ng-model="autoJSONParseDepthRes">
+                        </div>
+                        <div class="form-group" title="Not implemented yet">
+                            <label for="auto-json-parse-depth-request">Auto JSON Parse Depth (Request)</label>
+                            <input disabled="disabled" type="number" name="auto-json-parse-depth-request" id="auto-json-parse-depth-request" ng-model="autoJSONParseDepthReq">
+                        </div>
                     </div>
 
 
@@ -280,8 +293,8 @@
 
                 </div>
             </div>
-        </div>
-    </div>
+        </section>
+    </section>
 </body>
 
 </html>

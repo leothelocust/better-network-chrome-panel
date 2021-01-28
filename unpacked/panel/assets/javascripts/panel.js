@@ -35,6 +35,10 @@ BNPChrome.controller("PanelController", function PanelController($scope, toolbar
     const HOST = "https://leviolson.com" // "http://localhost:3000"
     const CHANGELOG = {
         "What's New": {
+            "v1.0.1:": {
+                "Panel Settings": HOST + "/posts/bnp-changelog#panel-settings",
+                "Bugs": "squashed"
+            },
             "v1.0.0:": {
                 "Improved Search": HOST + "/posts/bnp-changelog#improved-search",
                 "JSON Editor BUILT IN": HOST + "/posts/bnp-changelog#json-editor-built-in",
@@ -58,7 +62,8 @@ BNPChrome.controller("PanelController", function PanelController($scope, toolbar
     $scope.showOriginal = false;
     $scope.currentDetailTab = "tab-response";
     $scope.showIncomingRequests = true;
-    $scope.myResponseCodeMirror = null;
+    $scope.autoJSONParseDepthRes = 3;
+    $scope.autoJSONParseDepthReq = 6;
     $scope.filter = "";
     $scope.editor = null;
 
@@ -122,8 +127,15 @@ BNPChrome.controller("PanelController", function PanelController($scope, toolbar
         } catch (e) {
             $scope.andFilter = false;
         }
+        
+        try {
+            let scrollToNew = JSON.parse(LOCALSTORAGE.getItem('bnp-scrollToNew'));
+            $scope.showIncomingRequests = !!scrollToNew;
+        } catch (e) {
+            $scope.showIncomingRequests = true;
+        }
 
-        console.debug('Retrieving', $scope.andFilter, $scope.searchTerms, $scope.oldSearchTerms);
+        console.debug('Retrieving Settings from Local Storage');
 
         chrome.devtools.network.onRequestFinished.addListener(function (request) {
             // do not show requests to chrome extension resources
@@ -134,7 +146,7 @@ BNPChrome.controller("PanelController", function PanelController($scope, toolbar
         });
 
         chrome.devtools.network.onNavigated.addListener(function (event) {
-            console.log("Event", event);
+            // display a line break in the network logs to show page reloaded
             $scope.masterRequests.push({
                 id: $scope.uniqueId,
                 separator: true,
@@ -207,10 +219,11 @@ BNPChrome.controller("PanelController", function PanelController($scope, toolbar
     _setLocalStorage = function() {
         // do some sort of comparison to searchTerms and oldSearchTerms to make sure there is only one.
         // although, now that I think about it... this comparison shouldn't be necessary... /shrug
+        LOCALSTORAGE.setItem('bnp-scrollToNew', JSON.stringify($scope.showIncomingRequests));
         LOCALSTORAGE.setItem('bnp-andfilter', JSON.stringify($scope.andFilter));
         LOCALSTORAGE.setItem('bnp-searchterms', JSON.stringify($scope.searchTerms));
         LOCALSTORAGE.setItem('bnp-oldsearchterms', JSON.stringify($scope.oldSearchTerms));
-        console.debug('Saving', $scope.andFilter, $scope.searchTerms, $scope.oldSearchTerms);
+        console.debug('Saving', $scope.showIncomingRequests, $scope.andFilter, $scope.searchTerms, $scope.oldSearchTerms);
     }
 
     $scope.addSearchTerm = function(index) {
@@ -237,7 +250,7 @@ BNPChrome.controller("PanelController", function PanelController($scope, toolbar
     $scope.createToolbar = function () {
         toolbar.createToggleButton(
             "embed",
-            "JSON Parsing",
+            "Toggle JSON Parsing (See Panel Settings)",
             false,
             function () {
                 // ga('send', 'event', 'button', 'click', 'Toggle JSON Parsing');
@@ -361,8 +374,6 @@ BNPChrome.controller("PanelController", function PanelController($scope, toolbar
         $scope.activeResponseCookies = [];
         $scope.activeResponseHeaders = [];
         $scope.activeCode = null;
-
-        $scope.showIncomingRequests = true;
     };
 
     $scope.setActive = function (requestId) {
@@ -436,9 +447,13 @@ BNPChrome.controller("PanelController", function PanelController($scope, toolbar
             $scope.responseJsonEditor.set(null)
             $scope.requestJsonEditor.set(null)
         }
-        $scope.displayCode("responseJsonEditor", $scope.activeCode, 3);
-        $scope.displayCode("requestJsonEditor", $scope.activePostData, 6);
+        $scope.displayCode("responseJsonEditor", $scope.activeCode, $scope.autoJSONParseDepthRes);
+        $scope.displayCode("requestJsonEditor", $scope.activePostData, $scope.autoJSONParseDepthReq);
     });
+
+    $scope.$watch('showIncomingRequests', function(newVal, oldVal) {
+        _setLocalStorage();
+    })
 
     $scope.selectDetailTab = function (tabId, external) {
         $scope.currentDetailTab = tabId;
